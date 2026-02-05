@@ -27,12 +27,25 @@ SESSION_STATE = {
 class ChatRequest(BaseModel):
     message: str
 
-def get_image():
+# def get_image():
+#     if not os.path.exists(ASSETS_DIR):
+#         return []
+
+#     files = os.listdir(ASSETS_DIR)
+#     return [f for f in files if f.lower().endswith((".jpg", ".jpeg"))]
+
+def get_image(product_name=None):
     if not os.path.exists(ASSETS_DIR):
         return []
-
+    
     files = os.listdir(ASSETS_DIR)
-    return [f for f in files if f.lower().endswith((".jpg", ".jpeg"))]
+    images = [f for f in files if f.lower().endswith((".jpg", ".jpeg"))]
+
+    if product_name:
+        key = product_name.lower().replace(" ", "_")
+        images = [img for img in images if key in img.lower()]
+
+    return images
 
 def reset_session():
     SESSION_STATE.update({
@@ -56,30 +69,61 @@ async def chat(request: ChatRequest):
         SESSION_STATE["state"] = "ASK_IMAGE"
         print(f">>> Product name set: {msg}")
 
-        return {
-            "reply": f"Great! Product name set to '{msg}'.\nNow select an image."
-        }
-    
-    if state == "ASK_IMAGE":
-        images = get_image()
+        images = get_image(product_name=msg)
 
         if not images:
-            return {"reply": "No images found in assets folder."}
+            reset_session()
+            return {"reply": "No matching products found."}
+
+        SESSION_STATE["images"] = images
+
+        payload = [
+            {"id": i + 1, "url": f"/static/assets/{img}"}
+            for i, img in enumerate(images)
+        ]
+
+        return {
+            "reply": "Matching products:",
+            "images": payload
+        }
+
+        # return {"reply": f"Searching {msg} products..."}
+    
+    if state == "ASK_IMAGE":
+        # images = get_image()
 
         if msg.isdigit():
             idx = int(msg) - 1
+            images = SESSION_STATE.get("images", [])
+
             if 0 <= idx < len(images):
-                SESSION_STATE["selected_image_path"] = os.path.join(ASSETS_DIR, images[idx])
+                SESSION_STATE["selected_image_path"] = os.path.join(
+                    ASSETS_DIR, images[idx]
+                )
+
+                SESSION_STATE["headline"] = None
+                SESSION_STATE["description"] = None
                 SESSION_STATE["state"] = "COLLECT_TEXT"
-                print(f">>> Selected image: {images[idx]}")
-                return {
-                    "reply": "Image selected \nNow provide headline."
-                }
-            
-        image_list = "\n".join([f"{i+1}. {img}" for i, img in enumerate(images)])
+                return {"reply": "Image selected. Enter headline."}
+
+            return {"reply": "Invalid selection. Try again."}
+
+        images = get_image(product_name=SESSION_STATE['product_name'])
+
+        if not images:
+            reset_session()
+            return {"reply": "No images found in assets folder."}
+        
+        SESSION_STATE["images"] = images
+
+        payload = [
+            {"id": i + 1, "url": f"/static/assets/{img}"}
+            for i, img in enumerate(images)
+        ]
 
         return {
-            "reply": f"Available Images:\n{image_list}\n\nReply with image number."
+            "reply": "Matching products:",
+            "images": payload
         }
 
     if state == "COLLECT_TEXT":

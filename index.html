@@ -87,6 +87,15 @@ async function send() {
 
   add("Bot: " + data.reply, "bot");
 
+  if (data.images) {
+    data.images.forEach(img => {
+      const i = document.createElement("img");
+      i.src = img.url;
+      i.style.maxWidth = "200px";
+      chat.appendChild(i);
+    });
+  }
+
   // Render banner if exists
   if (data.banner_base64) {
     const img = document.createElement("img");
