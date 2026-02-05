@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Banner Chatbot</title>
+
+<style>
+body {
+  font-family: Arial;
+}
+
+#chat {
+  width: 500px;
+  height: 400px;
+  border: 1px solid black;
+  padding: 10px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.user {
+  color: blue;
+  margin: 5px 0;
+}
+
+.bot {
+  color: green;
+  margin: 5px 0;
+}
+
+input {
+  width: 420px;
+  padding: 5px;
+}
+
+button {
+  padding: 6px;
+}
+
+img {
+  margin-top: 10px;
+  max-width: 100%;
+}
+</style>
+</head>
+
+<body>
+
+<h3>AI Banner Chatbot</h3>
+
+<div id="chat"></div>
+
+<input id="input" placeholder="Type here..." />
+<button onclick="send()">Send</button>
+
+<script>
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+
+function add(text, cls) {
+  const div = document.createElement("div");
+  div.className = cls;
+  div.innerText = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// Default message
+window.onload = () => {
+    add("Bot: Hi! I can help you design a marketing banner. What is the product you're advertising? (e.g., 'running shoes')", "bot");
+};
+
+async function send() {
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  add("You: " + msg, "user");
+  input.value = "";
+
+  const res = await fetch("/chat", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ message: msg })
+  });
+
+  const data = await res.json();
+
+  add("Bot: " + data.reply, "bot");
+
+  // Render banner if exists
+  if (data.banner_base64) {
+    const img = document.createElement("img");
+    img.src = "data:image/jpeg;base64," + data.banner_base64;
+    chat.appendChild(img);
+  }
+}
+
+// Enter key support
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") send();
+});
+</script>
+
+</body>
+</html>
